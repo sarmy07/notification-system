@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Notification Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 0 20px;
+      }
+      #notifications {
+        margin-top: 20px;
+      }
+      .notification {
+        background: #4f46e5;
+        color: white;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        animation: slideIn 0.3s ease;
+      }
+      .notification h4 {
+        margin: 0 0 8px 0;
+      }
+      .notification p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      input,
+      button {
+        padding: 10px;
+        margin: 5px 0;
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      button {
+        background: #4f46e5;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      #status {
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      #status.connected {
+        background: #dcfce7;
+        color: #166534;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>🔔 Notification Tester</h2>
+
+    <div id="status">Disconnected</div>
+
+    <input type="text" id="userId" placeholder="Paste your userId here" />
+    <button onclick="connect()">Connect</button>
+
+    <div id="notifications"></div>
+
+    <script>
+      let socket;
+
+      function connect() {
+        const userId = document.getElementById('userId').value;
+        if (!userId) return alert('Please enter your userId');
+
+        // connect to our NestJS WebSocket gateway
+        socket = io('http://localhost:3000');
+
+        socket.on('connect', () => {
+          document.getElementById('status').textContent = '✅ Connected';
+          document.getElementById('status').className = 'connected';
+
+          // join the room for this user
+          socket.emit('join', userId);
+          console.log('Joined room for user:', userId);
+        });
+
+        // listen for incoming notifications
+        socket.on('notification', (data) => {
+          console.log('Notification received:', data);
+          showNotification(data);
+        });
+
+        socket.on('disconnect', () => {
+          document.getElementById('status').textContent = 'Disconnected';
+          document.getElementById('status').className = '';
+        });
+      }
+
+      function showNotification(data) {
+        const div = document.createElement('div');
+        div.className = 'notification';
+        div.innerHTML = `
+          <h4>${data.title}</h4>
+          <p>${data.message}</p>
+        `;
+        document.getElementById('notifications').prepend(div);
+      }
+    </script>
+  </body>
+</html>

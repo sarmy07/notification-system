@@ -2,14 +2,18 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
 import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import authConfig from './config/auth.config';
 import { HashingProvider } from './providers/hashing.provider';
 
 const mockUserService = {
   findOneByEmail: jest.fn(),
-  create: jest.fn(),
+  createUser: jest.fn(),
 };
 
 const mockJwtService = {
@@ -116,6 +120,42 @@ describe('AuthService', () => {
 
       expect(result.token).toBeDefined();
       expect(result.user.email).toBe('test@gmail.com');
+    });
+  });
+
+  describe('registerUser', () => {
+    it('should throw ConflictException if email already exists', async () => {
+      mockUserService.findOneByEmail.mockResolvedValue({ id: 'user-123' });
+
+      await expect(
+        service.registerUser({
+          name: 'John',
+          email: 'existing@gmail.com',
+          password: 'secret123',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should register user successfully', async () => {
+      const mockUser = {
+        id: 'user-123',
+        name: 'John',
+        email: 'new@gmail.com',
+        password: 'hashedpassword',
+      };
+
+      mockUserService.findOneByEmail.mockResolvedValue(null); // no existing user
+      mockHashingProvider.hashPassword.mockResolvedValue('hashedpassword');
+      mockUserService.createUser.mockResolvedValue(mockUser);
+
+      const result = await service.registerUser({
+        name: 'John',
+        email: 'new@gmail.com',
+        password: 'secret123',
+      });
+
+      expect(result.message).toBe('Signup success');
+      expect(result.user.email).toBe('new@gmail.com');
     });
   });
 });
